@@ -25,3 +25,21 @@ This script will:
 cargo build --release
 ./target/release/rusty-panel
 ```
+
+## Configuration
+
+rusty-panel uses a toml file for configuration.
+
+### Device Settings
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `color` | string | Device LED color in hex format (`#RRGGBB` or `#RRGGBBAA`) |
+
+### Button Configuration
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | number | Yes | Button identifier (0-3 for PC-Panel Mini) |
+| `on_click` | string | No | Shell command to execute when button is pressed |
+| `on_rotate` | string | No | Shell command to execute when dial is rotated (use `{amount}` placeholder) |

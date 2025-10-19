@@ -1,0 +1,25 @@
+# Example configuration file for rusty-panel
+# Copy this to config.toml and customize for your setup
+
+[device]
+color = "#51f6fb51"
+
+# Button configurations
+# Each button can have on_click and/or on_rotate actions
+
+[[buttons]]
+id = 0
+on_click = "xdotool key XF86AudioMute"
+on_rotate = "amixer set Master {amount}%"
+
+[[buttons]]
+id = 1
+on_click = "xdotool key XF86AudioPlay"
+
+[[buttons]]
+id = 2
+on_click = "xdotool key XF86AudioPrev"
+
+[[buttons]]
+id = 3
+on_click = "xdotool key XF86AudioNext"

@@ -1,6 +1,8 @@
 use hidapi::{HidApi, HidDevice, HidError};
 use std::io::{Error, ErrorKind};
 
+pub mod config;
+
 // Function to get the first available HID device matching known VID/PID pairs
 pub fn open_first_device() -> Result<PanelDevice, HidError> {
     let api = HidApi::new()?;
@@ -34,16 +36,32 @@ pub struct PanelDevice {
 }
 
 impl PanelDevice {
-    const SET_FULL_COLOR: u8 = 0x04;
+    pub fn apply_config(&mut self, config: config::Config) {
+        let _ = self.set_color(config.device.parse_color().unwrap());
+
+        for button_cfg in config.buttons {
+            if let Some(_) = &button_cfg.on_click {
+                self.handler.register_click_callback(button_cfg.id, move || {
+                    println!("Button {} clicked, running command: {}", button_cfg.id, button_cfg.on_click.as_ref().unwrap());
+                });
+            }
+            if let Some(_) = &button_cfg.on_rotate {
+                self.handler.register_rotate_callback(button_cfg.id, move |amount| {
+                    println!("Button {} rotated by {}, running command: {}", button_cfg.id, amount, button_cfg.on_rotate.as_ref().unwrap());
+                });
+            }
+        }
+    }
 
     pub fn open_stream(self) -> Result<(), HidError> {
         loop {
             let mut buf = [0u8; 64];
             match self.device.read(&mut buf) {
                 Ok(bytes_read) if bytes_read >= 3 => {
-                    match buf[0] {
-                        0x01 => self.handler.rotate(buf[1] as usize, buf[2]),
-                        0x02 => self.handler.click(buf[1] as usize),
+                    match (buf[0], buf[1], buf[2]) {
+                        (0x01, button_id, rotation) => self.handler.rotate(button_id as usize, rotation),
+                        (0x02, button_id, 0x01) => self.handler.click(button_id as usize), // Button press
+                        (0x02, _, 0x00) => {}, // Button release
                         _ => {},
                     }
                 }
@@ -58,10 +76,12 @@ impl PanelDevice {
         }
     }
 
-    pub fn set_color(&self) -> Result<(), Error> {
+    const SET_FULL_COLOR: u8 = 0x04;
+
+    pub fn set_color(&self, color: (u8, u8, u8)) -> Result<(), Error> {
         self.device.write(&[
-            self.device_id, PanelDevice::SET_FULL_COLOR, self.color_set_id, 
-            0x00, 0xff, 0xff
+            self.device_id, PanelDevice::SET_FULL_COLOR, self.color_set_id,
+            color.0, color.1, color.2
         ]).map(|_| ()).map_err(|result| {
             Error::new(ErrorKind::Other, format!("failed to set color: {}", result))
         })
