@@ -9,7 +9,7 @@ pub fn open_first_device() -> Result<PanelDevice, HidError> {
             (0x0483, 0xa3c4) // PC Panel Mini
             => {
                 let device = device_info.open_device(&api)?;
-                return Ok(PanelDevice { device });
+                return Ok(PanelDevice { device, handler: PanelHandler::new(4) });
             }
             _ => continue,
         }
@@ -22,20 +22,21 @@ pub fn open_first_device() -> Result<PanelDevice, HidError> {
 
 pub struct PanelDevice {
     device: HidDevice,
+    pub handler: PanelHandler,
 }
 
 impl PanelDevice {
-    pub fn open_stream(self, panel_handler: PanelHandler) {
+    pub fn open_stream(self) {
         loop {
             let mut buf = [0u8; 3];
             match self.device.read(&mut buf) {
                 Ok(bytes_read) if bytes_read > 0 => {
                     match buf.get(0) {
-                        Some(&0x01) => panel_handler.rotate(
+                        Some(&0x01) => self.handler.rotate(
                             buf.get(1).cloned().unwrap_or(0) as usize,
                             buf.get(2).cloned().unwrap_or(0),
                         ),
-                        Some(&0x02) => panel_handler.click(
+                        Some(&0x02) => self.handler.click(
                             buf.get(1).cloned().unwrap_or(0) as usize,
                         ),
                         _ => {},
