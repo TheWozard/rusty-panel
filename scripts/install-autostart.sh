@@ -7,8 +7,6 @@ set -e
 AUTOSTART_DIR="$HOME/.config/autostart"
 DESKTOP_FILE="$AUTOSTART_DIR/rusty-panel.desktop"
 BINARY_PATH="$HOME/.cargo/bin/rusty-panel"
-
-# Create autostart directory if it doesn't exist
 mkdir -p "$AUTOSTART_DIR"
 
 # Check if binary exists
@@ -31,13 +29,7 @@ X-GNOME-Autostart-enabled=true
 X-KDE-autostart-after=panel
 Terminal=false
 EOF
-
 chmod +x "$DESKTOP_FILE"
 
-echo "rusty-panel autostart installed successfully!"
-echo ""
-echo "The application will start automatically on next login."
-echo "To disable autostart:"
-echo "  - KDE: System Settings → Autostart"
-echo "  - GNOME: gnome-tweaks → Startup Applications"
-echo "  - Or manually: rm $DESKTOP_FILE"
+# Success
+echo "rusty-panel autostart installed successfully."

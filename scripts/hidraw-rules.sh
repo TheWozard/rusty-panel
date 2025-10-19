@@ -25,5 +25,5 @@ EOF
 udevadm control --reload-rules
 udevadm trigger
 
-# Inform the user
+# Success
 echo "Udev rules for rusty-panel have been set up."
