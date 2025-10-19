@@ -2,7 +2,7 @@
 # Copy this to config.toml and customize for your setup
 
 [device]
-color = "#51f6fb51"
+color = "#D34516"
 
 # Button configurations
 # Each button can have on_click and/or on_rotate actions
@@ -11,7 +11,7 @@ color = "#51f6fb51"
 id = 0
 on_click = "pactl set-sink-mute @DEFAULT_SINK@ toggle"
 on_rotate = "pactl set-sink-volume @DEFAULT_SINK@ {amount}%"
-# range = "0-150" # Optional: set volume range from 0% to 150%
+# range = "0-150" # Optional: set volume range from 0% to 150% (default is 0-100%)
 
 [[buttons]]
 id = 1
