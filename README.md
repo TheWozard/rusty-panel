@@ -29,20 +29,26 @@ cargo install --path .
 
 This installs `rusty-panel` to `~/.cargo/bin/rusty-panel`.
 
-### Auto-start on Login (Systemd)
+### Auto-start on Login
 
-To run rusty-panel automatically when you log in:
+For KDE Plasma, GNOME, and most other desktop environments, use the XDG autostart method:
 
 ```bash
-./scripts/install-service.sh
+./scripts/install-autostart.sh
 ```
 
 This script will:
-- Create a systemd service file at `~/.config/systemd/user/rusty-panel.service`
+- Create a desktop entry at `~/.config/autostart/rusty-panel.desktop`
 
-## Configuration
+### Configuration
 
-rusty-panel uses a toml file for configuration.
+rusty-panel uses a TOML configuration file. By default, it looks for the config at:
+- `~/.config/rusty-panel/rusty-panel.toml`
+
+You can specify a custom config path:
+```bash
+rusty-panel /path/to/config.toml
+```
 
 ### Device Settings
 
