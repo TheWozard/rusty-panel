@@ -19,12 +19,26 @@ sudo ./scripts/hidraw-rules.sh
 This script will:
 - Create a udev rule at `/etc/udev/rules.d/70-rusty-panel.rules`
 
-## Usage
+## Installation
+
+Install the binary to your system:
 
 ```bash
-cargo build --release
-./target/release/rusty-panel
+cargo install --path .
 ```
+
+This installs `rusty-panel` to `~/.cargo/bin/rusty-panel`.
+
+### Auto-start on Login (Systemd)
+
+To run rusty-panel automatically when you log in:
+
+```bash
+./scripts/install-service.sh
+```
+
+This script will:
+- Create a systemd service file at `~/.config/systemd/user/rusty-panel.service`
 
 ## Configuration
 

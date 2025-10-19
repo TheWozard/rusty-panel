@@ -3,6 +3,8 @@
 # This script sets up udev rules for hidraw devices used by rusty-panel.
 # Must be run with sudo: sudo ./scripts/hidraw-rules.sh
 
+set -e
+
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
     echo "Error: This script must be run with sudo"
