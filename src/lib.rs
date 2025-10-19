@@ -151,7 +151,7 @@ impl TemplatedCommand {
         let _ = Command::new("sh")
             .arg("-c")
             .arg(&self.command)
-            .spawn();
+            .status();
     }
 
     pub fn execute_with_arg(&self, amount: u8) {
@@ -160,6 +160,6 @@ impl TemplatedCommand {
         let _ = Command::new("sh")
             .arg("-c")
             .arg(&full_command)
-            .spawn();
+            .status();
     }
 }
