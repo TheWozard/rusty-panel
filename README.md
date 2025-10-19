@@ -1,3 +1,27 @@
 # Rusty Panel
 
 A Rust application for handling HID input from PC-Panel
+
+> This currently only supports PC-Panel Mini.
+
+## Prerequisites
+
+- Rust toolchain (install from [rustup.rs](https://rustup.rs))
+
+## Setup
+
+To access the PC Panel without sudo, you need to set up udev rules:
+
+```bash
+sudo ./scripts/hidraw-rules.sh
+```
+
+This script will:
+- Create a udev rule at `/etc/udev/rules.d/70-rusty-panel.rules`
+
+## Usage
+
+```bash
+cargo build --release
+./target/release/rusty-panel
+```
