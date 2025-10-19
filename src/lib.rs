@@ -147,19 +147,23 @@ impl TemplatedCommand {
     }
 
     pub fn execute(&self) {
-        print!("Executing command: {}\n", &self.command);
-        let _ = Command::new("sh")
+        if let Err(e) = Command::new("sh")
             .arg("-c")
             .arg(&self.command)
-            .status();
+            .status()
+        {
+            eprintln!("Error executing command '{}': {}", &self.command, e);
+        }
     }
 
     pub fn execute_with_arg(&self, amount: u8) {
         let full_command = self.command.replace("{amount}", &amount.to_string());
-        print!("Executing command: {}\n", &full_command);
-        let _ = Command::new("sh")
+        if let Err(e) = Command::new("sh")
             .arg("-c")
             .arg(&full_command)
-            .status();
+            .status()
+        {
+            eprintln!("Error executing command '{}': {}", &full_command, e);
+        }
     }
 }
