@@ -63,3 +63,4 @@ rusty-panel /path/to/config.toml
 | `id` | number | Yes | Button identifier (0-3 for PC-Panel Mini) |
 | `on_click` | string | No | Shell command to execute when button is pressed |
 | `on_rotate` | string | No | Shell command to execute when dial is rotated (use `{amount}` placeholder) |
+| `range` | string | No | Range for rotation command in format `min-max` (default, `0-100`). Resolution cannot exceed 255 |

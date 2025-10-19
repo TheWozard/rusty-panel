@@ -11,11 +11,11 @@ pub fn open_first_device() -> Result<PanelDevice, HidError> {
             (0x0483, 0xa3c4) // PC Panel Mini
             => {
                 let device = device_info.open_device(&api)?;
-                return Ok(PanelDevice { 
-                    device, 
+                return Ok(PanelDevice {
+                    device,
                     device_id: 0x06,
                     color_set_id: 0x05,
-                    handler: PanelHandler::new(4) 
+                    handler: PanelHandler::new(4)
                 });
             }
             _ => continue,
@@ -119,7 +119,7 @@ impl PanelHandler {
         if button < self.rotate_callback_lookup.len() {
             let executable = TemplatedCommand::new(command);
             self.rotate_callback_lookup[button] = Some(Box::new(move |amount| {
-                executable.execute_with_arg(((amount as u16 * range) / 0xff) + offset);
+                executable.execute_with_amount(((amount as u16 * range) / 0xff) + offset);
             }));
         }
     }
@@ -141,6 +141,7 @@ impl PanelHandler {
     }
 }
 
+// Struct to represent a command with optional templating.
 struct TemplatedCommand {
     command: String,
 }
@@ -151,23 +152,25 @@ impl TemplatedCommand {
     }
 
     pub fn execute(&self) {
+        log::debug!("Executing: {}", &self.command);
         if let Err(e) = Command::new("sh")
             .arg("-c")
             .arg(&self.command)
             .status()
         {
-            eprintln!("Error executing command '{}': {}", &self.command, e);
+            log::error!("Error executing command '{}': {}", &self.command, e);
         }
     }
 
-    pub fn execute_with_arg(&self, amount: u16) {
+    pub fn execute_with_amount(&self, amount: u16) {
         let full_command = self.command.replace("{amount}", &amount.to_string());
+        log::debug!("Executing: {}", &full_command);
         if let Err(e) = Command::new("sh")
             .arg("-c")
             .arg(&full_command)
             .status()
         {
-            eprintln!("Error executing command '{}': {}", &full_command, e);
+            log::error!("Error executing command '{}': {}", &full_command, e);
         }
     }
 }

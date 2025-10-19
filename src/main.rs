@@ -4,6 +4,9 @@ use std::path::Path;
 const DEFAULT_CONFIG: &str = include_str!("../rusty-panel.toml");
 
 fn main() {
+    // Initialize logger (controlled by RUST_LOG environment variable)
+    env_logger::init();
+
     let args: Vec<String> = std::env::args().collect();
 
     // Setup args and defaults.
@@ -18,23 +21,23 @@ fn main() {
     if !path.exists() {
         if let Some(parent) = path.parent() {
             if let Err(e) = fs::create_dir_all(parent) {
-                eprintln!("Failed to create config directory: {}", e);
+                log::error!("Failed to create config directory for default config: {}", e);
                 std::process::exit(1);
             }
         }
-
         match fs::write(path, DEFAULT_CONFIG) {
-            Ok(_) => println!("Created default config at: {}", config_path),
+            Ok(_) => log::info!("Created default config at {}", config_path),
             Err(e) => {
-                eprintln!("Failed to create default config at {}: {}", config_path, e);
+                log::error!("Failed to create default config at {}: {}", config_path, e);
                 std::process::exit(1);
             }
         }
     }
 
     // Load configuration.
+    log::info!("Starting rusty-panel with configuration: {}", config_path);
     let config = rusty_panel::config::Config::from_file(config_path).unwrap_or_else(|e| {
-        eprintln!("Failed to load config from {}: {}", config_path, e);
+        log::error!("Failed to load config from {}: {}", config_path, e);
         std::process::exit(1);
     });
 
@@ -42,15 +45,15 @@ fn main() {
     match rusty_panel::open_first_device() {
         Ok(mut device) => {
             if let Err(e) = device.apply_config(config) {
-                eprintln!("Error applying configuration: {}", e);
+                log::error!("Error applying configuration: {}", e);
                 std::process::exit(1);
             }
             if let Err(e) = device.open_stream() {
-                eprintln!("Error during device stream: {}", e);
+                log::error!("Error during device stream: {}", e);
             }
         }
         Err(e) => {
-            eprintln!("Failed to open device: {}", e);
+            log::error!("Failed to open device: {}", e);
         }
     }
 }
