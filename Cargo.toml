@@ -1,0 +1,15 @@
+[package]
+name = "rusty-panel"
+version = "0.1.0"
+edition = "2021"
+authors = ["Christopher Bond <dan620@gmail.com>"]
+description = "A Rust application for handling HID input from PC Panel for linux"
+license = "MIT"
+
+[dependencies]
+hidapi = "2.6"
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.11"
+
+[dev-dependencies]
