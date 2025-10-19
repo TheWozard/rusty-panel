@@ -55,7 +55,7 @@ impl PanelDevice {
         Ok(())
     }
 
-    pub fn open_stream(self) -> Result<(), HidError> {
+    pub fn open_stream(&mut self) -> Result<(), HidError> {
         loop {
             let mut buf = [0u8; 64];
             match self.device.read(&mut buf) {
@@ -92,7 +92,7 @@ impl PanelDevice {
 
 pub struct PanelHandler {
     click_callback_lookup: Vec<Option<Box<dyn Fn()>>>,
-    rotate_callback_lookup: Vec<Option<Box<dyn Fn(u8)>>>,
+    rotate_callback_lookup: Vec<Option<Box<dyn FnMut(u8)>>>,
 }
 
 impl PanelHandler {
@@ -117,7 +117,7 @@ impl PanelHandler {
 
     pub fn register_rotate_command(&mut self, button: usize, command: String, range: u16, offset: u16) {
         if button < self.rotate_callback_lookup.len() {
-            let executable = TemplatedCommand::new(command);
+            let mut executable = TemplatedCommand::new(command);
             self.rotate_callback_lookup[button] = Some(Box::new(move |amount| {
                 executable.execute_with_amount(((amount as u16 * range) / 0xff) + offset);
             }));
@@ -132,8 +132,8 @@ impl PanelHandler {
         }
     }
 
-    pub fn rotate(&self, button: usize, amount: u8) {
-        if let Some(result) = self.rotate_callback_lookup.get(button) {
+    pub fn rotate(&mut self, button: usize, amount: u8) {
+        if let Some(result) = self.rotate_callback_lookup.get_mut(button) {
             if let Some(callback) = result {
                 callback(amount);
             }
@@ -144,11 +144,12 @@ impl PanelHandler {
 // Struct to represent a command with optional templating.
 struct TemplatedCommand {
     command: String,
+    prev_amount: Option<u16>,
 }
 
 impl TemplatedCommand {
     pub fn new(command: String) -> Self {
-        Self { command }
+        Self { command, prev_amount: None }
     }
 
     pub fn execute(&self) {
@@ -162,7 +163,11 @@ impl TemplatedCommand {
         }
     }
 
-    pub fn execute_with_amount(&self, amount: u16) {
+    pub fn execute_with_amount(&mut self, amount: u16) {
+        if self.prev_amount.is_some() && self.prev_amount.unwrap() == amount {
+            return; // No change in amount, skip execution
+        }
+        self.prev_amount = Some(amount);
         let full_command = self.command.replace("{amount}", &amount.to_string());
         log::debug!("Executing: {}", &full_command);
         if let Err(e) = Command::new("sh")
