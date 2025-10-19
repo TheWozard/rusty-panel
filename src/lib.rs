@@ -36,19 +36,23 @@ pub struct PanelDevice {
 }
 
 impl PanelDevice {
-    pub fn apply_config(&mut self, config: config::Config) {
+    pub fn apply_config(&mut self, config: config::Config) -> Result<(), Box<dyn std::error::Error>> {
         // Load initial state
-        let _ = self.set_color(config.device.parse_color().unwrap());
+        let color = config.device.parse_color()?;
+        let _ = self.set_color(color);
 
         // Register button callbacks
         for button_cfg in config.buttons {
+            let (range, offset) = button_cfg.parse_range_offset()?;
             if let Some(command) = button_cfg.on_click {
                 self.handler.register_click_command(button_cfg.id, command.to_string());
             }
             if let Some(command) = button_cfg.on_rotate {
-                self.handler.register_rotate_command(button_cfg.id, command.to_string());
+                self.handler.register_rotate_command(button_cfg.id, command.to_string(), range, offset);
             }
         }
+
+        Ok(())
     }
 
     pub fn open_stream(self) -> Result<(), HidError> {
@@ -57,7 +61,7 @@ impl PanelDevice {
             match self.device.read(&mut buf) {
                 Ok(bytes_read) if bytes_read >= 3 => {
                     match (buf[0], buf[1], buf[2]) {
-                        (0x01, button_id, rotation) => self.handler.rotate(button_id as usize, ((rotation as u16 * 100) / 255) as u8), // Rotary encoder
+                        (0x01, button_id, rotation) => self.handler.rotate(button_id as usize, rotation), // Rotary encoder
                         (0x02, button_id, 0x01) => self.handler.click(button_id as usize), // Button press
                         (0x02, _, 0x00) => {}, // Button release
                         _ => {},
@@ -111,11 +115,11 @@ impl PanelHandler {
         }
     }
 
-    pub fn register_rotate_command(&mut self, button: usize, command: String) {
+    pub fn register_rotate_command(&mut self, button: usize, command: String, range: u16, offset: u16) {
         if button < self.rotate_callback_lookup.len() {
             let executable = TemplatedCommand::new(command);
             self.rotate_callback_lookup[button] = Some(Box::new(move |amount| {
-                executable.execute_with_arg(amount);
+                executable.execute_with_arg(((amount as u16 * range) / 0xff) + offset);
             }));
         }
     }
@@ -156,7 +160,7 @@ impl TemplatedCommand {
         }
     }
 
-    pub fn execute_with_arg(&self, amount: u8) {
+    pub fn execute_with_arg(&self, amount: u16) {
         let full_command = self.command.replace("{amount}", &amount.to_string());
         if let Err(e) = Command::new("sh")
             .arg("-c")

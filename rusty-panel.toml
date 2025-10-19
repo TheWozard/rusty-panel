@@ -11,6 +11,7 @@ color = "#51f6fb51"
 id = 0
 on_click = "pactl set-sink-mute @DEFAULT_SINK@ toggle"
 on_rotate = "pactl set-sink-volume @DEFAULT_SINK@ {amount}%"
+range = "0-150"
 
 [[buttons]]
 id = 1

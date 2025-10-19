@@ -41,7 +41,10 @@ fn main() {
     // Open device and get started.
     match rusty_panel::open_first_device() {
         Ok(mut device) => {
-            device.apply_config(config);
+            if let Err(e) = device.apply_config(config) {
+                eprintln!("Error applying configuration: {}", e);
+                std::process::exit(1);
+            }
             if let Err(e) = device.open_stream() {
                 eprintln!("Error during device stream: {}", e);
             }

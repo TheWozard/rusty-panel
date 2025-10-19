@@ -18,6 +18,7 @@ pub struct ButtonConfig {
     pub id: usize,
     pub on_click: Option<String>,
     pub on_rotate: Option<String>,
+    pub range: Option<String>,
 }
 
 impl Config {
@@ -55,5 +56,26 @@ impl DeviceConfig {
             (g * a / 255) as u8,
             (b * a / 255) as u8,
         ))
+    }
+}
+
+impl ButtonConfig {
+    // Parse the range string into (range, offset) tuple. This is derived from min and max values.
+    pub fn parse_range_offset(&self) -> Result<(u16, u16), Box<dyn std::error::Error>> {
+        let min_max = self.parse_min_max()?;
+        Ok((min_max.1 - min_max.0, min_max.0))
+    }
+
+    // Parse the range string into a tuple of (min, max) values. Supports formats like "min-max" or just "max".
+    pub fn parse_min_max(&self) -> Result<(u16, u16), Box<dyn std::error::Error>> {
+        if let Some(range_str) = &self.range {
+            let parts: Vec<&str> = range_str.split('-').collect();
+            match parts.len() {
+                1 => return Ok((0, parts[0].parse::<u16>()?)),
+                2 => return Ok((parts[0].parse::<u16>()?, parts[1].parse::<u16>()?)),
+                _ => return Err(format!("Invalid range format: {}", range_str).into()),
+            }
+        }
+        Ok((0, 100))
     }
 }
