@@ -9,17 +9,17 @@ color = "#51f6fb51"
 
 [[buttons]]
 id = 0
-on_click = "xdotool key XF86AudioMute"
-on_rotate = "amixer set Master {amount}%"
+on_click = "pactl set-sink-mute @DEFAULT_SINK@ toggle"
+on_rotate = "pactl set-sink-volume @DEFAULT_SINK@ {amount}%"
 
 [[buttons]]
 id = 1
-on_click = "xdotool key XF86AudioPlay"
+on_click = "playerctl play-pause"
 
 [[buttons]]
 id = 2
-on_click = "xdotool key XF86AudioPrev"
+on_click = "playerctl previous"
 
 [[buttons]]
 id = 3
-on_click = "xdotool key XF86AudioNext"
+on_click = "playerctl next"

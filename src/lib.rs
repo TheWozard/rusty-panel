@@ -1,5 +1,5 @@
 use hidapi::{HidApi, HidDevice, HidError};
-use std::io::{Error, ErrorKind};
+use std::{io::{Error, ErrorKind}, process::Command};
 
 pub mod config;
 
@@ -27,28 +27,26 @@ pub fn open_first_device() -> Result<PanelDevice, HidError> {
     ).into())
 }
 
+// Struct for interacting with the PC Panel device.
 pub struct PanelDevice {
     device: HidDevice,
     device_id: u8,
     color_set_id: u8,
-
-    pub handler: PanelHandler,
+    handler: PanelHandler,
 }
 
 impl PanelDevice {
     pub fn apply_config(&mut self, config: config::Config) {
+        // Load initial state
         let _ = self.set_color(config.device.parse_color().unwrap());
 
+        // Register button callbacks
         for button_cfg in config.buttons {
-            if let Some(_) = &button_cfg.on_click {
-                self.handler.register_click_callback(button_cfg.id, move || {
-                    println!("Button {} clicked, running command: {}", button_cfg.id, button_cfg.on_click.as_ref().unwrap());
-                });
+            if let Some(command) = button_cfg.on_click {
+                self.handler.register_click_command(button_cfg.id, command.to_string());
             }
-            if let Some(_) = &button_cfg.on_rotate {
-                self.handler.register_rotate_callback(button_cfg.id, move |amount| {
-                    println!("Button {} rotated by {}, running command: {}", button_cfg.id, amount, button_cfg.on_rotate.as_ref().unwrap());
-                });
+            if let Some(command) = button_cfg.on_rotate {
+                self.handler.register_rotate_command(button_cfg.id, command.to_string());
             }
         }
     }
@@ -59,7 +57,7 @@ impl PanelDevice {
             match self.device.read(&mut buf) {
                 Ok(bytes_read) if bytes_read >= 3 => {
                     match (buf[0], buf[1], buf[2]) {
-                        (0x01, button_id, rotation) => self.handler.rotate(button_id as usize, rotation),
+                        (0x01, button_id, rotation) => self.handler.rotate(button_id as usize, ((rotation as u16 * 100) / 255) as u8), // Rotary encoder
                         (0x02, button_id, 0x01) => self.handler.click(button_id as usize), // Button press
                         (0x02, _, 0x00) => {}, // Button release
                         _ => {},
@@ -104,21 +102,21 @@ impl PanelHandler {
         result
     }
 
-    pub fn register_click_callback<F>(&mut self, button: usize, callback: F)
-    where
-        F: Fn() + 'static,
-    {
+    pub fn register_click_command(&mut self, button: usize, command: String) {
         if button < self.click_callback_lookup.len() {
-            self.click_callback_lookup[button] = Some(Box::new(callback));
+            let executable = TemplatedCommand::new(command);
+            self.click_callback_lookup[button] = Some(Box::new(move || {
+                executable.execute();
+            }));
         }
     }
 
-    pub fn register_rotate_callback<F>(&mut self, button: usize, callback: F)
-    where
-        F: Fn(u8) + 'static,
-    {
+    pub fn register_rotate_command(&mut self, button: usize, command: String) {
         if button < self.rotate_callback_lookup.len() {
-            self.rotate_callback_lookup[button] = Some(Box::new(callback));
+            let executable = TemplatedCommand::new(command);
+            self.rotate_callback_lookup[button] = Some(Box::new(move |amount| {
+                executable.execute_with_arg(amount);
+            }));
         }
     }
 
@@ -136,5 +134,32 @@ impl PanelHandler {
                 callback(amount);
             }
         }
+    }
+}
+
+struct TemplatedCommand {
+    command: String,
+}
+
+impl TemplatedCommand {
+    pub fn new(command: String) -> Self {
+        Self { command }
+    }
+
+    pub fn execute(&self) {
+        print!("Executing command: {}\n", &self.command);
+        let _ = Command::new("sh")
+            .arg("-c")
+            .arg(&self.command)
+            .spawn();
+    }
+
+    pub fn execute_with_arg(&self, amount: u8) {
+        let full_command = self.command.replace("{amount}", &amount.to_string());
+        print!("Executing command: {}\n", &full_command);
+        let _ = Command::new("sh")
+            .arg("-c")
+            .arg(&full_command)
+            .spawn();
     }
 }
