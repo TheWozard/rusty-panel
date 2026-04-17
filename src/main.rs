@@ -3,20 +3,18 @@ use std::path::Path;
 
 const DEFAULT_CONFIG: &str = include_str!("../rusty-panel.toml");
 
-fn main() {
-    // Initialize logger (controlled by RUST_LOG environment variable)
+#[tokio::main]
+async fn main() {
     env_logger::init();
 
     let args: Vec<String> = std::env::args().collect();
 
-    // Setup args and defaults.
     let default_config = dirs::home_dir()
         .map(|home| home.join(".config/rusty-panel/rusty-panel.toml"))
         .and_then(|path| path.to_str().map(String::from))
         .unwrap_or_else(|| "rusty-panel.toml".to_string());
     let config_path = args.get(1).unwrap_or(&default_config);
 
-    // Create config file with embedded DEFAULT_CONFIG if it doesn't exist.
     let path = Path::new(config_path);
     if !path.exists() {
         if let Some(parent) = path.parent() {
@@ -37,7 +35,7 @@ fn main() {
     log::info!("Starting rusty-panel with configuration: {}", config_path);
 
     loop {
-        let config = rusty_panel::config::Config::from_file(config_path).unwrap_or_else(|e| {
+        let (config, watcher) = rusty_panel::config::Config::from_file(config_path).unwrap_or_else(|e| {
             log::error!("Failed to load config from {}: {}", config_path, e);
             std::process::exit(1);
         });
@@ -48,7 +46,7 @@ fn main() {
                     log::error!("Error applying configuration: {}", e);
                     std::process::exit(1);
                 }
-                if let Err(e) = device.open_stream() {
+                if let Err(e) = device.open_stream(watcher).await {
                     log::warn!("Device disconnected: {}", e);
                 }
             }
@@ -57,6 +55,6 @@ fn main() {
             }
         }
 
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     }
 }

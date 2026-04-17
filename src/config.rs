@@ -1,6 +1,8 @@
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Deserialize;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use tokio::sync::mpsc;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -21,18 +23,51 @@ pub struct ButtonConfig {
     pub range: Option<String>,
 }
 
-impl Config {
-    /// Load configuration from a TOML file
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
-        let contents = fs::read_to_string(path)?;
-        let config: Config = toml::from_str(&contents)?;
-        Ok(config)
+pub struct ConfigWatcher {
+    rx: mpsc::UnboundedReceiver<()>,
+    path: PathBuf,
+    _watcher: RecommendedWatcher,
+}
+
+impl ConfigWatcher {
+    pub async fn wait_for_change(&mut self) {
+        self.rx.recv().await;
+        while self.rx.try_recv().is_ok() {}
     }
 
-    /// Load configuration from a TOML string
+    pub fn reload(&self) -> Result<Config, Box<dyn std::error::Error>> {
+        Config::load(&self.path)
+    }
+}
+
+impl Config {
+    pub(crate) fn load<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
+        let contents = fs::read_to_string(path)?;
+        Ok(toml::from_str(&contents)?)
+    }
+
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<(Self, ConfigWatcher), Box<dyn std::error::Error>> {
+        let config = Self::load(&path)?;
+        let (tx, rx) = mpsc::unbounded_channel::<()>();
+        let mut watcher = RecommendedWatcher::new(
+            move |result: notify::Result<notify::Event>| {
+                if result.is_ok() {
+                    let _ = tx.send(());
+                }
+            },
+            notify::Config::default(),
+        )?;
+        watcher.watch(path.as_ref(), RecursiveMode::NonRecursive)?;
+        let watcher = ConfigWatcher {
+            rx,
+            path: path.as_ref().to_path_buf(),
+            _watcher: watcher,
+        };
+        Ok((config, watcher))
+    }
+
     pub fn from_str(s: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let config: Config = toml::from_str(s)?;
-        Ok(config)
+        Ok(toml::from_str(s)?)
     }
 }
 
