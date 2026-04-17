@@ -34,26 +34,29 @@ fn main() {
         }
     }
 
-    // Load configuration.
     log::info!("Starting rusty-panel with configuration: {}", config_path);
-    let config = rusty_panel::config::Config::from_file(config_path).unwrap_or_else(|e| {
-        log::error!("Failed to load config from {}: {}", config_path, e);
-        std::process::exit(1);
-    });
 
-    // Open device and get started.
-    match rusty_panel::open_first_device() {
-        Ok(mut device) => {
-            if let Err(e) = device.apply_config(config) {
-                log::error!("Error applying configuration: {}", e);
-                std::process::exit(1);
+    loop {
+        let config = rusty_panel::config::Config::from_file(config_path).unwrap_or_else(|e| {
+            log::error!("Failed to load config from {}: {}", config_path, e);
+            std::process::exit(1);
+        });
+
+        match rusty_panel::open_first_device() {
+            Ok(mut device) => {
+                if let Err(e) = device.apply_config(config) {
+                    log::error!("Error applying configuration: {}", e);
+                    std::process::exit(1);
+                }
+                if let Err(e) = device.open_stream() {
+                    log::warn!("Device disconnected: {}", e);
+                }
             }
-            if let Err(e) = device.open_stream() {
-                log::error!("Error during device stream: {}", e);
+            Err(e) => {
+                log::debug!("Device not found: {}", e);
             }
         }
-        Err(e) => {
-            log::error!("Failed to open device: {}", e);
-        }
+
+        std::thread::sleep(std::time::Duration::from_secs(2));
     }
 }

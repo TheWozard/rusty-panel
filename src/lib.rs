@@ -15,7 +15,8 @@ pub fn open_first_device() -> Result<PanelDevice, HidError> {
                     device,
                     device_id: 0x06,
                     color_set_id: 0x05,
-                    handler: PanelHandler::new(4)
+                    handler: PanelHandler::new(4),
+                    color: None,
                 });
             }
             _ => continue,
@@ -33,6 +34,7 @@ pub struct PanelDevice {
     device_id: u8,
     color_set_id: u8,
     handler: PanelHandler,
+    color: Option<(u8, u8, u8)>,
 }
 
 impl PanelDevice {
@@ -40,6 +42,7 @@ impl PanelDevice {
         // Load initial state
         let color = config.device.parse_color()?;
         let _ = self.set_color(color);
+        self.color = Some(color);
 
         // Register button callbacks
         for button_cfg in config.buttons {
@@ -58,16 +61,24 @@ impl PanelDevice {
     pub fn open_stream(&mut self) -> Result<(), HidError> {
         loop {
             let mut buf = [0u8; 64];
-            match self.device.read(&mut buf) {
-                Ok(bytes_read) if bytes_read >= 3 => {
-                    match (buf[0], buf[1], buf[2]) {
-                        (0x01, button_id, rotation) => self.handler.rotate(button_id as usize, rotation), // Rotary encoder
-                        (0x02, button_id, 0x01) => self.handler.click(button_id as usize), // Button press
-                        (0x02, _, 0x00) => {}, // Button release
-                        _ => {},
+            match self.device.read_timeout(&mut buf, 5_000) {
+                Ok(0) => {
+                    // Timeout — re-send color in case device woke from sleep
+                    if let Some(color) = self.color {
+                        let _ = self.set_color(color);
                     }
                 }
-                Ok(_) => continue, // No data read
+                Ok(bytes_read) if bytes_read >= 3 => {
+                    match (buf[0], buf[1], buf[2]) {
+                        (0x01, button_id, rotation) => self.handler.rotate(button_id as usize, rotation),
+                        (0x02, button_id, 0x01) => self.handler.click(button_id as usize),
+                        (0x02, _, 0x00) => {},
+                        _ => {
+                            log::debug!("unknown input report: {:?}", &buf[..bytes_read]);
+                        },
+                    }
+                }
+                Ok(_) => {}
                 Err(e) => {
                     return Err(Error::new(
                         ErrorKind::Other,
@@ -125,6 +136,7 @@ impl PanelHandler {
     }
 
     pub fn click(&self, button: usize) {
+        log::debug!("Click button {}", button);
         if let Some(result) = self.click_callback_lookup.get(button) {
             if let Some(callback) = result {
                 callback();
@@ -133,6 +145,7 @@ impl PanelHandler {
     }
 
     pub fn rotate(&mut self, button: usize, amount: u8) {
+        log::debug!("Rotate button {}: {}", button, amount);
         if let Some(result) = self.rotate_callback_lookup.get_mut(button) {
             if let Some(callback) = result {
                 callback(amount);
